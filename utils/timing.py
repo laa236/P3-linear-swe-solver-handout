@@ -70,7 +70,7 @@ def time_mpi_strong_scaling(executable_name, max_size, ranks_list):
         print(f"Ideal time: {times[0] / (ranks / ranks_arr[0])}")
 
     plt.plot(ranks_arr, times, marker="o")
-    plt.plot(ranks_arr, times[0] / (ranks / ranks_arr[0]) * np.ones_like(ranks_arr), linestyle="--")
+    plt.plot(ranks_arr, times[0] / (ranks / ranks_arr[0]), linestyle="--")
     plt.xlabel("Nodes")
     plt.ylabel("Time (s)")
     plt.savefig(f"{executable_name}_strong_scaling_timing.png")
