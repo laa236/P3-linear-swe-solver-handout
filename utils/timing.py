@@ -12,7 +12,7 @@ num_iters = 10000
 serial_sizes = [ 100, 250, 500, 750, 1000 ]
 gpu_sizes = [ 100, 500, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000 ]
 
-mpi_size_strong = 1024
+mpi_size_strong = 2048
 mpi_sizes_weak = [ 512, 1024, 2048, 4096 ]
 
 mpi_tasks_per_node = 128
@@ -70,7 +70,7 @@ def time_mpi_strong_scaling(executable_name, max_size, ranks_list):
         print(f"Ideal time: {times[0] / (ranks / ranks_arr[0])}")
 
     plt.plot(ranks_arr, times, marker="o")
-    plt.plot(ranks_arr, times[0] / (ranks / ranks_arr[0]) * np.ones_like(ranks_arr), linestyle="--")
+    plt.plot(ranks_arr, times[0] / (ranks / ranks_arr[0]), linestyle="--")
     plt.xlabel("Nodes")
     plt.ylabel("Time (s)")
     plt.savefig(f"{executable_name}_strong_scaling_timing.png")

@@ -182,7 +182,7 @@ Once you are done, you will submit your code to CMS, along with a report. This r
 - A plot of $n$ versus the time taken for your CUDA code (where $n$ is the number of cells in the $x$ and $y$ direction) for 10,000 iterations and up to $n = 10,000$
 - A description of the optimizations you tried for your CUDA code, as well as a timing breakdown of where your program spends the most cycles
 - Proof that your MPI implementation works as intended (the error can be much looser here)
-- Two parallel speed-up plots, one where you fix $n = 1,024$ for 10,000 iterations on 8, 32, 128, and 512 nodes, and another where you start with $n = 512$ on 8 ranks, and then do $n = 1,024$ on 32 ranks, $n = 2,048$ on 128 ranks, and $n = 4,096$ on 512 ranks.
+- Two parallel speed-up plots, one where you fix $n = 2,048$ for 10,000 iterations on 8, 32, 128, and 512 nodes (strong scaling), and another where you start with $n = 512$ on 8 ranks, and then do $n = 1,024$ on 32 ranks, $n = 2,048$ on 128 ranks, and $n = 4,096$ on 512 ranks (weak scaling).
 - A description of the optimizations you tried for your MPI code, as well as a timing breakdown of where your program spends the most cycles
 
 # Resources
