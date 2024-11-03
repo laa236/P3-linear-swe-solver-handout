@@ -4,6 +4,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef CUDA
+#include <cuda_runtime.h>
+#endif
+
 #ifdef MPI
 #include <mpi.h>
 #endif
@@ -172,6 +176,10 @@ int main(int argc, char **argv)
 
         step();
     }
+
+#ifdef CUDA
+    cudaDeviceSynchronize();
+#endif
 
     clock_t end = clock();
     fprintf(stderr, "Execution time for rank %d: %f\n", rank, (double)(end - start) / CLOCKS_PER_SEC);
