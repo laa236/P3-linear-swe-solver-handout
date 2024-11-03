@@ -1,13 +1,11 @@
-NVCC=nvcc
-NVCCFLAGS=-DCUDA
-
 CPP=CC
 CFLAGS=-lm
 OPTFLAGS=-O3 -ffast-math
-
 MPIFLAGS=-DMPI
-
 DEBUGFLAGS=-g -pg
+
+NVCC=nvcc
+NVCCFLAGS=-DCUDA
 
 PYTHON=python3
 
