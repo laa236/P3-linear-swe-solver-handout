@@ -232,14 +232,22 @@ void step()
         {
             if (j + 3 < ny) {
                 __m256d vv = _mm256_loadu_pd(&v(i, j + 1));
+                __m256d vv_p4 = _mm256_loadu_pd(&v(i, j + 5));
                 __m256d dvv = _mm256_load_pd(&dv(i, j));
+                __m256d dvv_p4 = _mm256_load_pd(&dv(i, j+4));
                 __m256d dv1v = _mm256_load_pd(&dv1(i, j));
+                __m256d dv1v_p4 = _mm256_load_pd(&dv1(i, j+4));
                 __m256d dv2v = _mm256_load_pd(&dv2(i, j));
+                __m256d dv2v_p4 = _mm256_load_pd(&dv2(i, j+4));
 
                 __m256d result = _mm256_fmadd_pd(a1v, dvv, _mm256_fmadd_pd(a2v, dv1v, _mm256_mul_pd(a3v, dv2v)));
                 result = _mm256_fmadd_pd(result, dtv, vv);
+                __m256d result_p4 = _mm256_fmadd_pd(a1v, dvv_p4, _mm256_fmadd_pd(a2v, dv1v_p4, _mm256_mul_pd(a3v, dv2v_p4)));
+                result_p4 = _mm256_fmadd_pd(result_p4, dtv, vv_p4);
                 _mm256_storeu_pd(&v(i, j + 1), result);
-                j += 3;
+                _mm256_storeu_pd(&v(i, j + 5), result_p4);
+
+                j += 7;
             } else {
                 v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
             }
