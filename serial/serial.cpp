@@ -215,14 +215,32 @@ void step()
                 __m256d dh2v = _mm256_load_pd(&dh2(i, j));
                 __m256d dh2v_p4 = _mm256_load_pd(&dh2(i, j+4));
 
+                __m256d hv_2 = _mm256_loadu_pd(&h(i, j+8));
+                __m256d hv_p4_2 = _mm256_loadu_pd(&h(i, j+12));
+                __m256d dhv_2 = _mm256_load_pd(&dh(i, j+8));
+                __m256d dhv_p4_2 = _mm256_load_pd(&dh(i, j+12));
+                __m256d dh1v_2 = _mm256_load_pd(&dh1(i, j+8));
+                __m256d dh1v_p4_2 = _mm256_load_pd(&dh1(i, j+12));
+                __m256d dh2v_2 = _mm256_load_pd(&dh2(i, j+8));
+                __m256d dh2v_p4_2 = _mm256_load_pd(&dh2(i, j+12));
+
                 __m256d result = _mm256_fmadd_pd(a1v, dhv, _mm256_fmadd_pd(a2v, dh1v, _mm256_mul_pd(a3v, dh2v)));
-                __m256d result_p4 = _mm256_fmadd_pd(a1v, dhv_p4, _mm256_fmadd_pd(a2v, dh1v_p4, _mm256_mul_pd(a3v, dh2v_p4)));
                 result = _mm256_fmadd_pd(result, dtv, hv);
+                __m256d result_p4 = _mm256_fmadd_pd(a1v, dhv_p4, _mm256_fmadd_pd(a2v, dh1v_p4, _mm256_mul_pd(a3v, dh2v_p4)));
                 result_p4 = _mm256_fmadd_pd(result_p4, dtv, hv_p4);
+
+                __m256d result_2 = _mm256_fmadd_pd(a1v, dhv_2, _mm256_fmadd_pd(a2v, dh1v_2, _mm256_mul_pd(a3v, dh2v_2)));
+                result_2 = _mm256_fmadd_pd(result_2, dtv, hv_2);
+                __m256d result_p4_2 = _mm256_fmadd_pd(a1v, dhv_p4_2, _mm256_fmadd_pd(a2v, dh1v_p4_2, _mm256_mul_pd(a3v, dh2v_p4_2)));
+                result_p4_2 = _mm256_fmadd_pd(result_p4_2, dtv, hv_p4_2);
+                
                 _mm256_storeu_pd(&h(i, j), result);
                 _mm256_storeu_pd(&h(i, j+4), result_p4);
 
-                j += 7;
+                _mm256_storeu_pd(&h(i, j+8), result_2);
+                _mm256_storeu_pd(&h(i, j+12), result_p4_2);
+
+                j += 15;
             } else {
                 h(i, j) += (a1 * dh(i, j) + a2 * dh1(i, j) + a3 * dh2(i, j)) * dt;
             }
@@ -240,14 +258,32 @@ void step()
                 __m256d dv2v = _mm256_load_pd(&dv2(i, j));
                 __m256d dv2v_p4 = _mm256_load_pd(&dv2(i, j+4));
 
+                __m256d vv_2 = _mm256_loadu_pd(&v(i, j + 9));
+                __m256d vv_p4_2 = _mm256_loadu_pd(&v(i, j + 13));
+                __m256d dvv_2 = _mm256_load_pd(&dv(i, j+8));
+                __m256d dvv_p4_2 = _mm256_load_pd(&dv(i, j+12));
+                __m256d dv1v_2 = _mm256_load_pd(&dv1(i, j+8));
+                __m256d dv1v_p4_2 = _mm256_load_pd(&dv1(i, j+12));
+                __m256d dv2v_2 = _mm256_load_pd(&dv2(i, j+8));
+                __m256d dv2v_p4_2 = _mm256_load_pd(&dv2(i, j+12));
+
                 __m256d result = _mm256_fmadd_pd(a1v, dvv, _mm256_fmadd_pd(a2v, dv1v, _mm256_mul_pd(a3v, dv2v)));
                 result = _mm256_fmadd_pd(result, dtv, vv);
                 __m256d result_p4 = _mm256_fmadd_pd(a1v, dvv_p4, _mm256_fmadd_pd(a2v, dv1v_p4, _mm256_mul_pd(a3v, dv2v_p4)));
                 result_p4 = _mm256_fmadd_pd(result_p4, dtv, vv_p4);
+
+                __m256d result_2 = _mm256_fmadd_pd(a1v, dvv_2, _mm256_fmadd_pd(a2v, dv1v_2, _mm256_mul_pd(a3v, dv2v_2)));
+                result_2 = _mm256_fmadd_pd(result_2, dtv, vv_2);
+                __m256d result_p4_2 = _mm256_fmadd_pd(a1v, dvv_p4_2, _mm256_fmadd_pd(a2v, dv1v_p4_2, _mm256_mul_pd(a3v, dv2v_p4_2)));
+                result_p4_2 = _mm256_fmadd_pd(result_p4_2, dtv, vv_p4_2);
+
                 _mm256_storeu_pd(&v(i, j + 1), result);
                 _mm256_storeu_pd(&v(i, j + 5), result_p4);
 
-                j += 7;
+                _mm256_storeu_pd(&v(i, j + 9), result_2);
+                _mm256_storeu_pd(&v(i, j + 13), result_p4_2);
+
+                j += 15;
             } else {
                 v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
             }
