@@ -126,8 +126,24 @@ void step()
 
         for (int j = 0; j < ny; j++)
         {
+            if (j + 3 < ny) {
+                __m256d vv = _mm256_loadu_pd(&v(i, j + 1));
+                __m256d dvv = _mm256_loadu_pd(&dv(i, j));
+                __m256d dv1v = _mm256_loadu_pd(&dv1(i, j));
+                __m256d dv2v = _mm256_loadu_pd(&dv2(i, j));
+
+                __m256d result = _mm256_fmadd_pd(a1v, dvv, _mm256_fmadd_pd(a2v, dv1v, _mm256_mul_pd(a3v, dv2v)));
+                result = _mm256_fmadd_pd(result, dtv, vv);
+                _mm256_storeu_pd(&v(i, j + 1), result);
+                j += 3;
+            } else {
+                v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
+            }
+        }
+
+        for (int j = 0; j < ny; j++)
+        {
             u(i + 1, j) += (a1 * du(i, j) + a2 * du1(i, j) + a3 * du2(i, j)) * dt;
-            v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
         }
     }
 
