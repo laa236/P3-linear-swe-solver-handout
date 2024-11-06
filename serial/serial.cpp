@@ -205,16 +205,24 @@ void step()
     {
         for (int j = 0; j < ny; j++)
         {
-            if (j + 3 < ny) {
+            if (j + 7 < ny) {
                 __m256d hv = _mm256_loadu_pd(&h(i, j));
+                __m256d hv_p4 = _mm256_loadu_pd(&h(i, j+4));
                 __m256d dhv = _mm256_load_pd(&dh(i, j));
+                __m256d dhv_p4 = _mm256_load_pd(&dh(i, j+4));
                 __m256d dh1v = _mm256_load_pd(&dh1(i, j));
+                __m256d dh1v_p4 = _mm256_load_pd(&dh1(i, j+4));
                 __m256d dh2v = _mm256_load_pd(&dh2(i, j));
+                __m256d dh2v_p4 = _mm256_load_pd(&dh2(i, j+4));
 
                 __m256d result = _mm256_fmadd_pd(a1v, dhv, _mm256_fmadd_pd(a2v, dh1v, _mm256_mul_pd(a3v, dh2v)));
+                __m256d result_p4 = _mm256_fmadd_pd(a1v, dhv_p4, _mm256_fmadd_pd(a2v, dh1v_p4, _mm256_mul_pd(a3v, dh2v_p4)));
                 result = _mm256_fmadd_pd(result, dtv, hv);
+                result_p4 = _mm256_fmadd_pd(result_p4, dtv, hv_p4);
                 _mm256_storeu_pd(&h(i, j), result);
-                j += 3;
+                _mm256_storeu_pd(&h(i, j+4), result_p4);
+
+                j += 7;
             } else {
                 h(i, j) += (a1 * dh(i, j) + a2 * dh1(i, j) + a3 * dh2(i, j)) * dt;
             }
