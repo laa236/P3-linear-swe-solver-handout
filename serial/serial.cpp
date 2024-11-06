@@ -2,12 +2,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <immintrin.h>
+#include <string.h>
 
 #include "../common/common.hpp"
 #include "../common/solver.hpp"
 
 // Here we hold the number of cells we have in the x and y directions
-int nx, ny;
+int nx, ny, nx_ny_round4;
 
 // This is where all of our points are. We need to keep track of our active
 // height and velocity grids, but also the corresponding derivatives. The reason
@@ -30,18 +31,35 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     nx = nx_;
     ny = ny_;
 
+    nx_ny_round4 = ((nx * ny + 3) / 4) * 4;
+
     // We allocate memory for the derivatives
-    dh = (double *)calloc(nx * ny, sizeof(double));
-    du = (double *)calloc(nx * ny, sizeof(double));
-    dv = (double *)calloc(nx * ny, sizeof(double));
+    dh = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dh, 0, nx_ny_round4 * sizeof(double));
 
-    dh1 = (double *)calloc(nx * ny, sizeof(double));
-    du1 = (double *)calloc(nx * ny, sizeof(double));
-    dv1 = (double *)calloc(nx * ny, sizeof(double));
+    du = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(du, 0, nx_ny_round4 * sizeof(double));
+    
+    dv = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dv, 0, nx_ny_round4 * sizeof(double));
+    
+    dh1 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dh1, 0, nx_ny_round4 * sizeof(double));
 
-    dh2 = (double *)calloc(nx * ny, sizeof(double));
-    du2 = (double *)calloc(nx * ny, sizeof(double));
-    dv2 = (double *)calloc(nx * ny, sizeof(double));
+    du1 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(du1, 0, nx_ny_round4 * sizeof(double));
+
+    dv1 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dv1, 0, nx_ny_round4 * sizeof(double));
+
+    dh2 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dh2, 0, nx_ny_round4 * sizeof(double));
+
+    du2 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(du2, 0, nx_ny_round4 * sizeof(double));
+
+    dv2 = (double *)aligned_alloc(32, nx_ny_round4 * sizeof(double));
+    memset(dv2, 0, nx_ny_round4 * sizeof(double));
 
     H = H_;
     g = g_;
@@ -111,9 +129,9 @@ void step()
         {
             if (j + 3 < ny) {
                 __m256d hv = _mm256_loadu_pd(&h(i, j));
-                __m256d dhv = _mm256_loadu_pd(&dh(i, j));
-                __m256d dh1v = _mm256_loadu_pd(&dh1(i, j));
-                __m256d dh2v = _mm256_loadu_pd(&dh2(i, j));
+                __m256d dhv = _mm256_load_pd(&dh(i, j));
+                __m256d dh1v = _mm256_load_pd(&dh1(i, j));
+                __m256d dh2v = _mm256_load_pd(&dh2(i, j));
 
                 __m256d result = _mm256_fmadd_pd(a1v, dhv, _mm256_fmadd_pd(a2v, dh1v, _mm256_mul_pd(a3v, dh2v)));
                 result = _mm256_fmadd_pd(result, dtv, hv);
@@ -128,9 +146,9 @@ void step()
         {
             if (j + 3 < ny) {
                 __m256d vv = _mm256_loadu_pd(&v(i, j + 1));
-                __m256d dvv = _mm256_loadu_pd(&dv(i, j));
-                __m256d dv1v = _mm256_loadu_pd(&dv1(i, j));
-                __m256d dv2v = _mm256_loadu_pd(&dv2(i, j));
+                __m256d dvv = _mm256_load_pd(&dv(i, j));
+                __m256d dv1v = _mm256_load_pd(&dv1(i, j));
+                __m256d dv2v = _mm256_load_pd(&dv2(i, j));
 
                 __m256d result = _mm256_fmadd_pd(a1v, dvv, _mm256_fmadd_pd(a2v, dv1v, _mm256_mul_pd(a3v, dv2v)));
                 result = _mm256_fmadd_pd(result, dtv, vv);
