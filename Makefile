@@ -1,6 +1,7 @@
 CPP=CC
 CFLAGS=-lm
-OPTFLAGS=-O3 -ffast-math -march=native -ftree-vectorize -funroll-loops
+OPTFLAGS=-Ofast -ffast-math -march=native -ftree-vectorize -funroll-loops -mtune=native -fno-math-errno -falign-loops=32
+COPTFLAGS=-Ofast -ffast-math -march=native -ftree-vectorize -funroll-loops -mtune=native -fno-math-errno -falign-loops=32
 MPIFLAGS=-DMPI
 DEBUGFLAGS=-g -pg
 
