@@ -1,6 +1,6 @@
 CPP=CC
 CFLAGS=-lm
-OPTFLAGS=-O3 -ffast-math
+OPTFLAGS=-O3 -ffast-math -march=native
 MPIFLAGS=-DMPI
 DEBUGFLAGS=-g -pg
 
