@@ -230,7 +230,7 @@ void step()
 
         for (int j = 0; j < ny; j++)
         {
-            if (j + 3 < ny) {
+            if (j + 7 < ny) {
                 __m256d vv = _mm256_loadu_pd(&v(i, j + 1));
                 __m256d vv_p4 = _mm256_loadu_pd(&v(i, j + 5));
                 __m256d dvv = _mm256_load_pd(&dv(i, j));
