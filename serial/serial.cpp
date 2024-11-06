@@ -16,7 +16,7 @@ int nx, ny, nx_ny_round4;
 // derivative from the last 2 time steps.
 double *h, *u, *v, *dh, *du, *dv, *dh1, *du1, *dv1, *dh2, *du2, *dv2;
 double H, g, dx, dy, dt;
-__m256d dtv;
+__m256d dtv, neg_Hv, neg_gv, recip_dxv, recip_dyv;
 
 /**
  * This is your initialization function!
@@ -62,14 +62,18 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     memset(dv2, 0, nx_ny_round4 * sizeof(double));
 
     H = H_;
+    neg_Hv = _mm256_set1_pd(-1.0 * H_);
     g = g_;
+    neg_gv = _mm256_set1_pd(-1.0 * g_);
 
     dx = length_ / nx;
+    recip_dxv = _mm256_set1_pd(1 / dx);
+
     dy = width_ / ny;
+    recip_dyv = _mm256_set1_pd(1 / dy);
 
     dt = dt_;
-
-    dtv = _mm256_set1_pd(dt);
+    dtv = _mm256_set1_pd(dt_);
 }
 
 /**
@@ -92,9 +96,48 @@ void step()
     {
         for (int j = 0; j < ny; j++)
         {
-            dh(i, j) = -H * (du_dx(i, j) + dv_dy(i, j));
-            du(i, j) = -g * dh_dx(i, j);
-            dv(i, j) = -g * dh_dy(i, j);
+            if (j + 3 < ny) {
+                __m256d du_dxv = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&u(i + 1, j)),
+                        _mm256_loadu_pd(&u(i, j))),
+                    recip_dxv
+                    );
+                __m256d dv_dyv = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&v(i, j + 1)),
+                        _mm256_loadu_pd(&v(i, j))),
+                    recip_dyv
+                    );
+                __m256d dh_dxv = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&h(i + 1, j)),
+                        _mm256_loadu_pd(&h(i, j))),
+                    recip_dxv
+                    );
+                __m256d dh_dyv = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&h(i, j + 1)),
+                        _mm256_loadu_pd(&h(i, j))),
+                    recip_dyv
+                    );
+
+                __m256d dhv = _mm256_add_pd(du_dxv, dv_dyv);
+                dhv = _mm256_mul_pd(dhv, neg_Hv);
+
+                __m256d duv = _mm256_mul_pd(dh_dxv, neg_gv);
+                __m256d dvv = _mm256_mul_pd(dh_dyv, neg_gv);
+
+                _mm256_storeu_pd(&dh(i, j), dhv);
+                _mm256_storeu_pd(&du(i, j), duv);
+                _mm256_storeu_pd(&dv(i, j), dvv);
+
+                j += 3;
+            } else {
+                dh(i, j) = -H * (du_dx(i, j) + dv_dy(i, j));
+                du(i, j) = -g * dh_dx(i, j);
+                dv(i, j) = -g * dh_dy(i, j);
+            }
         }
     }
 
