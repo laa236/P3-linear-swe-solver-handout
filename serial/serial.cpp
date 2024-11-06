@@ -96,49 +96,84 @@ void step()
     {
         for (int j = 0; j < ny; j++)
         {
-            if (j + 3 < ny) {
+            if (j + 7 < ny) {
                 __m256d du_dxv = _mm256_mul_pd(
                     _mm256_sub_pd(
                         _mm256_loadu_pd(&u(i + 1, j)),
                         _mm256_loadu_pd(&u(i, j))),
                     recip_dxv
                     );
+                __m256d du_dxv_p4 = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&u(i + 1, j+4)),
+                        _mm256_loadu_pd(&u(i, j+4))),
+                    recip_dxv
+                    );
+
                 __m256d dv_dyv = _mm256_mul_pd(
                     _mm256_sub_pd(
                         _mm256_loadu_pd(&v(i, j + 1)),
                         _mm256_loadu_pd(&v(i, j))),
                     recip_dyv
                     );
+                __m256d dv_dyv_p4 = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&v(i, j + 5)),
+                        _mm256_loadu_pd(&v(i, j+4))),
+                    recip_dyv
+                    );
+
                 __m256d dh_dxv = _mm256_mul_pd(
                     _mm256_sub_pd(
                         _mm256_loadu_pd(&h(i + 1, j)),
                         _mm256_loadu_pd(&h(i, j))),
                     recip_dxv
                     );
+                __m256d dh_dxv_p4 = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&h(i + 1, j+4)),
+                        _mm256_loadu_pd(&h(i, j+4))),
+                    recip_dxv
+                    );
+                
                 __m256d dh_dyv = _mm256_mul_pd(
                     _mm256_sub_pd(
                         _mm256_loadu_pd(&h(i, j + 1)),
                         _mm256_loadu_pd(&h(i, j))),
                     recip_dyv
                     );
-
+                __m256d dh_dyv_p4 = _mm256_mul_pd(
+                    _mm256_sub_pd(
+                        _mm256_loadu_pd(&h(i, j + 5)),
+                        _mm256_loadu_pd(&h(i, j+ 4))),
+                    recip_dyv
+                    );
+                
                 __m256d dhv = _mm256_add_pd(du_dxv, dv_dyv);
                 dhv = _mm256_mul_pd(dhv, neg_Hv);
+                __m256d dhv_p4 = _mm256_add_pd(du_dxv_p4, dv_dyv_p4);
+                dhv_p4 = _mm256_mul_pd(dhv_p4, neg_Hv);
 
                 __m256d duv = _mm256_mul_pd(dh_dxv, neg_gv);
+                __m256d duv_p4 = _mm256_mul_pd(dh_dxv_p4, neg_gv);
                 __m256d dvv = _mm256_mul_pd(dh_dyv, neg_gv);
+                __m256d dvv_p4 = _mm256_mul_pd(dh_dyv_p4, neg_gv);
 
                 _mm256_storeu_pd(&dh(i, j), dhv);
+                _mm256_storeu_pd(&dh(i, j+4), dhv_p4);
                 _mm256_storeu_pd(&du(i, j), duv);
+                _mm256_storeu_pd(&du(i, j+4), duv_p4);
                 _mm256_storeu_pd(&dv(i, j), dvv);
+                _mm256_storeu_pd(&dv(i, j+4), dvv_p4);
 
-                j += 3;
+                j += 7;
             } else {
                 dh(i, j) = -H * (du_dx(i, j) + dv_dy(i, j));
                 du(i, j) = -g * dh_dx(i, j);
                 dv(i, j) = -g * dh_dy(i, j);
             }
         }
+
     }
 
     double a1, a2, a3;
