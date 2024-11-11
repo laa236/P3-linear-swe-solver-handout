@@ -1,6 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
-
+//#include <stdio.h>
 #include <math.h>
 
 #include "../common/common.hpp"
@@ -17,12 +17,15 @@
  * when doing the MPI version.
  */
 // Device pointers
-double *c_h, *c_u, *c_v, *c_dh, *c_du, *c_dv, *c_dh1, *c_du1, *c_dv1, *c_dh2, *c_du2, *c_dv2;
+double *h, *u, *v, *dh, *du, *dv, *dh1, *du1, *dv1, *dh2, *du2, *dv2;
 
 // Simulation parameters
 double H, g, dt, dx, dy;
 int nx, ny;
 int t = 0;
+
+//
+int numblocks_x, numblocks_y;
 
 void init(double *h0, double *u0, double *v0, double length_, double width_, int nx_, int ny_, double H_, double g_, double dt_, int rank_, int num_procs_)
 {
@@ -38,39 +41,105 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     size_t size = nx * ny * sizeof(double);
 
     // Allocate device memory
-    cudaMalloc((void**)&c_h, size);
-    cudaMalloc((void**)&c_u, size);
-    cudaMalloc((void**)&c_v, size);
+    cudaMalloc((void**)&h, size);
+    cudaMalloc((void**)&u, size);
+    cudaMalloc((void**)&v, size);
 
-    cudaMalloc((void**)&c_dh, size);
-    cudaMalloc((void**)&c_du, size);
-    cudaMalloc((void**)&c_dv, size);
+    cudaMalloc((void**)&dh, size);
+    cudaMalloc((void**)&du, size);
+    cudaMalloc((void**)&dv, size);
 
-    cudaMalloc((void**)&c_dh1, size);
-    cudaMalloc((void**)&c_du1, size);
-    cudaMalloc((void**)&c_dv1, size);
+    cudaMalloc((void**)&dh1, size);
+    cudaMalloc((void**)&du1, size);
+    cudaMalloc((void**)&dv1, size);
 
-    cudaMalloc((void**)&c_dh2, size);
-    cudaMalloc((void**)&c_du2, size);
-    cudaMalloc((void**)&c_dv2, size);
+    cudaMalloc((void**)&dh2, size);
+    cudaMalloc((void**)&du2, size);
+    cudaMalloc((void**)&dv2, size);
 
     // Copy initial data to device
-    cudaMemcpy(c_h, h0, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(c_u, u0, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(c_v, v0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(h, h0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(u, u0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(v, v0, size, cudaMemcpyHostToDevice);
 
     // Initialize derivative arrays to zero
-    cudaMemset(c_dh, 0, size);
-    cudaMemset(c_du, 0, size);
-    cudaMemset(c_dv, 0, size);
+    cudaMemset(dh, 0, size);
+    cudaMemset(du, 0, size);
+    cudaMemset(dv, 0, size);
 
-    cudaMemset(c_dh1, 0, size);
-    cudaMemset(c_du1, 0, size);
-    cudaMemset(c_dv1, 0, size);
+    cudaMemset(dh1, 0, size);
+    cudaMemset(du1, 0, size);
+    cudaMemset(dv1, 0, size);
 
-    cudaMemset(c_dh2, 0, size);
-    cudaMemset(c_du2, 0, size);
-    cudaMemset(c_dv2, 0, size);
+    cudaMemset(dh2, 0, size);
+    cudaMemset(du2, 0, size);
+    cudaMemset(dv2, 0, size);
+
+    numblocks_x = std::ceil((nx + 1) / 32.0);
+    numblocks_y = std::ceil((ny + 1) / 32.0);
+
+}
+
+__global__ void ghost_setup(int nx, int ny, double* h) {
+    int i = blockIdx.x * 32 + threadIdx.x;
+    int j = blockIdx.y * 32 + threadIdx.y;
+    //bottom two will only execute on the edges
+    //set the top boundary to equal the bottom
+    if (j == ny) {
+        h(i, ny) = h(i, 0);
+    }
+    //set the right boundary to equal the left
+    if (i == nx) {
+        h(nx, j) = h(0, j);
+    }
+}
+
+__global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
+    int i = blockIdx.x * 32 + threadIdx.x;
+    int j = blockIdx.y * 32 + threadIdx.y;
+
+    if (i >= nx || j >= ny) {
+        return;
+    }
+
+    dh(i, j) = -H * (du_dx(i, j) + dv_dy(i, j));
+    du(i, j) = -g * dh_dx(i, j);
+    dv(i, j) = -g * dh_dy(i, j);
+}
+
+__global__ void multistep(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
+    double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt)
+{
+    int i = blockIdx.x * 32 + threadIdx.x;
+    int j = blockIdx.y * 32 + threadIdx.y;
+    
+    if (i >= nx || j >= ny) {
+        return;
+    }
+
+    h(i, j) += (a1 * dh(i, j) + a2 * dh1(i, j) + a3 * dh2(i, j)) * dt;
+    u(i + 1, j) += (a1 * du(i, j) + a2 * du1(i, j) + a3 * du2(i, j)) * dt;
+    v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
+}
+
+void swap_buffers()
+{
+    double *tmp;
+
+    tmp = dh2;
+    dh2 = dh1;
+    dh1 = dh;
+    dh = tmp;
+
+    tmp = du2;
+    du2 = du1;
+    du1 = du;
+    du = tmp;
+
+    tmp = dv2;
+    dv2 = dv1;
+    dv1 = dv;
+    dv = tmp;
 }
 
 /**
@@ -80,7 +149,45 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
  */
 void step()
 {
-    // @TODO: Your code here
+    /*
+    cudaDeviceProp deviceProp;
+    cudaGetDeviceProperties(&deviceProp, 0);
+    printf("Max threads per block: %d\n", deviceProp.maxThreadsPerBlock);
+    printf("Max block dimensions: %d x %d x %d\n", deviceProp.maxThreadsDim[0], deviceProp.maxThreadsDim[1], deviceProp.maxThreadsDim[2]);
+    */
+
+    //this block is max threads in a block
+    dim3 blockDim(32, 32);
+    dim3 gridDim(numblocks_x, numblocks_y);
+    
+    ghost_setup<<<blockDim, gridDim>>>(nx, ny, h);
+    cudaDeviceSynchronize();
+    calc_derivs<<<blockDim, gridDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
+    cudaDeviceSynchronize();
+    
+    double a1, a2, a3;
+    if (t == 0)
+    {
+        a1 = 1.0;
+    }
+    else if (t == 1)
+    {
+        a1 = 3.0 / 2.0;
+        a2 = -1.0 / 2.0;
+    }
+    else
+    {
+        a1 = 23.0 / 12.0;
+        a2 = -16.0 / 12.0;
+        a3 = 5.0 / 12.0;
+    }
+
+    multistep<<<blockDim, gridDim>>>(
+        nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
+        dh1, du1, dv1, dh2, du2, dv2, dt);
+    cudaDeviceSynchronize();
+    swap_buffers();
+    t++;
 }
 
 /**
@@ -90,7 +197,7 @@ void step()
 void transfer(double *h_host)
 {
     size_t size = nx * ny * sizeof(double);
-    cudaMemcpy(h_host, c_h, size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_host, h, size, cudaMemcpyDeviceToHost);
 }
 
 /**
@@ -99,19 +206,19 @@ void transfer(double *h_host)
  */
 void free_memory()
 {
-    cudaFree(c_h);
-    cudaFree(c_u);
-    cudaFree(c_v);
+    cudaFree(h);
+    cudaFree(u);
+    cudaFree(v);
 
-    cudaFree(c_dh);
-    cudaFree(c_du);
-    cudaFree(c_dv);
+    cudaFree(dh);
+    cudaFree(du);
+    cudaFree(dv);
 
-    cudaFree(c_dh1);
-    cudaFree(c_du1);
-    cudaFree(c_dv1);
+    cudaFree(dh1);
+    cudaFree(du1);
+    cudaFree(dv1);
 
-    cudaFree(c_dh2);
-    cudaFree(c_du2);
-    cudaFree(c_dv2);
+    cudaFree(dh2);
+    cudaFree(du2);
+    cudaFree(dv2);
 }
