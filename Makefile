@@ -1,8 +1,9 @@
 CPP=CC
+
 CFLAGS=-lm
-OPTFLAGS=-O3 -ffast-math
+COPTFLAGS=-O3 -ffast-math
+
 MPIFLAGS=-DMPI
-DEBUGFLAGS=-g -pg
 
 NVCC=nvcc
 NVCCFLAGS=-DCUDA
@@ -17,7 +18,7 @@ serial: build/serial
 basic_serial: build/basic_serial
 
 build/mpi: common/main.cpp common/scenarios.cpp mpi/mpi.cpp
-	$(CPP) $^ -o $@ $(MPIFLAGS) $(CFLAGS) $(OPTFLAGS)
+	$(CPP) $^ -o $@ $(MPIFLAGS) $(CFLAGS) $(COPTFLAGS)
 
 build/gpu: common/main.cpp common/scenarios.cpp gpu/gpu.cu
 	$(NVCC) $^ -o $@ $(NVCCFLAGS)
