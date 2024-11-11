@@ -16,9 +16,61 @@
  * The rank and num_procs variables are unused here, but you will need them
  * when doing the MPI version.
  */
+// Device pointers
+double *c_h, *c_u, *c_v, *c_dh, *c_du, *c_dv, *c_dh1, *c_du1, *c_dv1, *c_dh2, *c_du2, *c_dv2;
+
+// Simulation parameters
+double H, g, dt, dx, dy;
+int nx, ny;
+int t = 0;
+
 void init(double *h0, double *u0, double *v0, double length_, double width_, int nx_, int ny_, double H_, double g_, double dt_, int rank_, int num_procs_)
 {
-    // @TODO: your code here
+    // Assign values to simulation parameters
+    nx = nx_;
+    ny = ny_;
+    H = H_;
+    g = g_;
+    dt = dt_;
+    dx = length_ / nx;
+    dy = width_ / ny;
+
+    size_t size = nx * ny * sizeof(double);
+
+    // Allocate device memory
+    cudaMalloc((void**)&c_h, size);
+    cudaMalloc((void**)&c_u, size);
+    cudaMalloc((void**)&c_v, size);
+
+    cudaMalloc((void**)&c_dh, size);
+    cudaMalloc((void**)&c_du, size);
+    cudaMalloc((void**)&c_dv, size);
+
+    cudaMalloc((void**)&c_dh1, size);
+    cudaMalloc((void**)&c_du1, size);
+    cudaMalloc((void**)&c_dv1, size);
+
+    cudaMalloc((void**)&c_dh2, size);
+    cudaMalloc((void**)&c_du2, size);
+    cudaMalloc((void**)&c_dv2, size);
+
+    // Copy initial data to device
+    cudaMemcpy(c_h, h0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(c_u, u0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(c_v, v0, size, cudaMemcpyHostToDevice);
+
+    // Initialize derivative arrays to zero
+    cudaMemset(c_dh, 0, size);
+    cudaMemset(c_du, 0, size);
+    cudaMemset(c_dv, 0, size);
+
+    cudaMemset(c_dh1, 0, size);
+    cudaMemset(c_du1, 0, size);
+    cudaMemset(c_dv1, 0, size);
+
+    cudaMemset(c_dh2, 0, size);
+    cudaMemset(c_du2, 0, size);
+    cudaMemset(c_dv2, 0, size);
 }
 
 /**
@@ -37,7 +89,8 @@ void step()
  */
 void transfer(double *h_host)
 {
-    // @TODO: Your code here
+    size_t size = nx * ny * sizeof(double);
+    cudaMemcpy(h_host, c_h, size, cudaMemcpyDeviceToHost);
 }
 
 /**
@@ -46,5 +99,19 @@ void transfer(double *h_host)
  */
 void free_memory()
 {
-    // @TODO: Your code here
+    cudaFree(c_h);
+    cudaFree(c_u);
+    cudaFree(c_v);
+
+    cudaFree(c_dh);
+    cudaFree(c_du);
+    cudaFree(c_dv);
+
+    cudaFree(c_dh1);
+    cudaFree(c_du1);
+    cudaFree(c_dv1);
+
+    cudaFree(c_dh2);
+    cudaFree(c_du2);
+    cudaFree(c_dv2);
 }
