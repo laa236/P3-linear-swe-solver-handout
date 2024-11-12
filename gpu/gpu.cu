@@ -88,11 +88,11 @@ __global__ void ghost_setup(int nx, int ny, double* h) {
     int j = blockIdx.y * 32 + threadIdx.y;
     //bottom two will only execute on the edges
     //set the top boundary to equal the bottom
-    if (j == ny) {
+    if (i < nx && j == ny) {
         h(i, ny) = h(i, 0);
     }
     //set the right boundary to equal the left
-    if (i == nx) {
+    if (i == nx && j < ny) {
         h(nx, j) = h(0, j);
     }
 }

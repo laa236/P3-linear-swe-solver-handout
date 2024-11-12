@@ -4,3 +4,5 @@ build/
 anim.gif
 correctness.gif
 basic.out
+*.out
+*.gif
