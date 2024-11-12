@@ -39,11 +39,14 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     dy = width_ / ny;
 
     size_t size = nx * ny * sizeof(double);
+    size_t size_h = (nx + 1) * (ny + 1) * sizeof(double);
+    size_t size_u = (nx + 2) * ny * sizeof(double);
+    size_t size_v = nx * (ny + 2) * sizeof(double);
 
     // Allocate device memory
-    cudaMalloc((void**)&h, size);
-    cudaMalloc((void**)&u, size);
-    cudaMalloc((void**)&v, size);
+    cudaMalloc((void**)&h, size_h);
+    cudaMalloc((void**)&u, size_u);
+    cudaMalloc((void**)&v, size_v);
 
     cudaMalloc((void**)&dh, size);
     cudaMalloc((void**)&du, size);
@@ -58,9 +61,9 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     cudaMalloc((void**)&dv2, size);
 
     // Copy initial data to device
-    cudaMemcpy(h, h0, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(u, u0, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(v, v0, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(h, h0, size_h, cudaMemcpyHostToDevice);
+    cudaMemcpy(u, u0, size_u, cudaMemcpyHostToDevice);
+    cudaMemcpy(v, v0, size_v, cudaMemcpyHostToDevice);
 
     // Initialize derivative arrays to zero
     cudaMemset(dh, 0, size);
@@ -75,8 +78,8 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
     cudaMemset(du2, 0, size);
     cudaMemset(dv2, 0, size);
 
-    numblocks_x = std::ceil((nx + 1) / 32.0);
-    numblocks_y = std::ceil((ny + 1) / 32.0);
+    numblocks_x = (nx + 31) / 32;
+    numblocks_y = (ny + 31) / 32;
 
 }
 
@@ -149,6 +152,8 @@ void swap_buffers()
  */
 void step()
 {
+    //cuda apparently synchs between kernel calls so no need for the synchs
+
     /*
     cudaDeviceProp deviceProp;
     cudaGetDeviceProperties(&deviceProp, 0);
@@ -161,9 +166,9 @@ void step()
     dim3 gridDim(numblocks_x, numblocks_y);
     
     ghost_setup<<<blockDim, gridDim>>>(nx, ny, h);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     calc_derivs<<<blockDim, gridDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     
     double a1, a2, a3;
     if (t == 0)
@@ -185,7 +190,7 @@ void step()
     multistep<<<blockDim, gridDim>>>(
         nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
         dh1, du1, dv1, dh2, du2, dv2, dt);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     swap_buffers();
     t++;
 }
@@ -196,7 +201,7 @@ void step()
  */
 void transfer(double *h_host)
 {
-    size_t size = nx * ny * sizeof(double);
+    size_t size = (nx + 1) * (ny + 1) * sizeof(double);
     cudaMemcpy(h_host, h, size, cudaMemcpyDeviceToHost);
 }
 
