@@ -165,9 +165,9 @@ void step()
     dim3 blockDim(32, 32);
     dim3 gridDim(numblocks_x, numblocks_y);
     
-    ghost_setup<<<blockDim, gridDim>>>(nx, ny, h);
+    ghost_setup<<<gridDim, blockDim>>>(nx, ny, h);
     //cudaDeviceSynchronize();
-    calc_derivs<<<blockDim, gridDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
+    calc_derivs<<<gridDim, blockDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
     //cudaDeviceSynchronize();
     
     double a1, a2, a3;
