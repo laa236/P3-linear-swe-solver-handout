@@ -125,6 +125,17 @@ __global__ void multistep(int nx, int ny, double a1, double a2, double a3, doubl
     v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
 }
 
+__global__ void compute_boundary(int nx, int ny, double* h, double* u, double* v) {
+    int i = blockIdx.x * 32 + threadIdx.x;
+    int j = blockIdx.y * 32 + threadIdx.y;
+    if (i < nx && j == ny) {
+        v(i, 0) = v(i, ny);
+    }
+    if (i == nx && j < ny) {
+        u(0, j) = u(nx, j);
+    }
+}
+
 void swap_buffers()
 {
     double *tmp;
@@ -190,6 +201,7 @@ void step()
     multistep<<<gridDim, blockDim>>>(
         nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
         dh1, du1, dv1, dh2, du2, dv2, dt);
+    compute_boundary<<<gridDim, blockDim>>>(nx, ny, h, u, v);
     //cudaDeviceSynchronize();
     swap_buffers();
     t++;
