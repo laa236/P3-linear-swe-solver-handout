@@ -187,7 +187,7 @@ void step()
         a3 = 5.0 / 12.0;
     }
 
-    multistep<<<blockDim, gridDim>>>(
+    multistep<<<gridDim, blockDim>>>(
         nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
         dh1, du1, dv1, dh2, du2, dv2, dt);
     //cudaDeviceSynchronize();
