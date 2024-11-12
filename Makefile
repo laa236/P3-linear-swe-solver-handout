@@ -6,7 +6,7 @@ MPIFLAGS=-DMPI
 DEBUGFLAGS=-g -pg
 
 NVCC=nvcc
-NVCCFLAGS=-DCUDA
+NVCCFLAGS=-DCUDA -Xptxas -O3 -arch=sm_80 -use_fast_math
 
 PYTHON=python3
 
