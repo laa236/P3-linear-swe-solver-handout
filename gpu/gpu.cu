@@ -84,8 +84,9 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
 }
 
 __global__ void ghost_setup(int nx, int ny, double* h) {
-    int i = blockIdx.x * 32 + threadIdx.x;
-    int j = blockIdx.y * 32 + threadIdx.y;
+    int id = blockIdx.x * 512 + threadIdx.x;
+    int i = id / ny;
+    int j = id % ny;
     //bottom two will only execute on the edges
     //set the top boundary to equal the bottom
     if (i < nx && j == ny) {
@@ -98,8 +99,9 @@ __global__ void ghost_setup(int nx, int ny, double* h) {
 }
 
 __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
-    int i = blockIdx.x * 32 + threadIdx.x;
-    int j = blockIdx.y * 32 + threadIdx.y;
+    int id = blockIdx.x * 512 + threadIdx.x;
+    int i = id / ny;
+    int j = id % ny;
 
     if (i >= nx || j >= ny) {
         return;
@@ -113,8 +115,9 @@ __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, 
 __global__ void multistep(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
     double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt)
 {
-    int i = blockIdx.x * 32 + threadIdx.x;
-    int j = blockIdx.y * 32 + threadIdx.y;
+    int id = blockIdx.x * 512 + threadIdx.x;
+    int i = id / ny;
+    int j = id % ny;
     
     if (i >= nx || j >= ny) {
         return;
@@ -126,8 +129,9 @@ __global__ void multistep(int nx, int ny, double a1, double a2, double a3, doubl
 }
 
 __global__ void compute_boundary(int nx, int ny, double* h, double* u, double* v) {
-    int i = blockIdx.x * 32 + threadIdx.x;
-    int j = blockIdx.y * 32 + threadIdx.y;
+    int id = blockIdx.x * 512 + threadIdx.x;
+    int i = id / ny;
+    int j = id % ny;
     if (i < nx && j == ny) {
         v(i, 0) = v(i, ny);
     }
@@ -173,8 +177,8 @@ void step()
     */
 
     //this block is max threads in a block
-    dim3 blockDim(32, 32);
-    dim3 gridDim(numblocks_x, numblocks_y);
+    dim3 blockDim(512);
+    dim3 gridDim(((nx*ny)+511)/512);
     
     ghost_setup<<<gridDim, blockDim>>>(nx, ny, h);
     //cudaDeviceSynchronize();
