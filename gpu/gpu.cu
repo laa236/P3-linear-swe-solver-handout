@@ -83,7 +83,7 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
 
 }
 
-__global__ void ghost_setup(int nx, int ny, double* h) {
+__global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
     int id = blockIdx.x * 512 + threadIdx.x;
     int i = id / ny;
     int j = id % ny;
@@ -96,12 +96,6 @@ __global__ void ghost_setup(int nx, int ny, double* h) {
     if (i == nx && j < ny) {
         h(nx, j) = h(0, j);
     }
-}
-
-__global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
-    int id = blockIdx.x * 512 + threadIdx.x;
-    int i = id / ny;
-    int j = id % ny;
 
     if (i >= nx || j >= ny) {
         return;
@@ -111,6 +105,7 @@ __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, 
     du(i, j) = -g * dh_dx(i, j);
     dv(i, j) = -g * dh_dy(i, j);
 }
+
 
 __global__ void multistep(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
     double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt)
@@ -126,12 +121,7 @@ __global__ void multistep(int nx, int ny, double a1, double a2, double a3, doubl
     h(i, j) += (a1 * dh(i, j) + a2 * dh1(i, j) + a3 * dh2(i, j)) * dt;
     u(i + 1, j) += (a1 * du(i, j) + a2 * du1(i, j) + a3 * du2(i, j)) * dt;
     v(i, j + 1) += (a1 * dv(i, j) + a2 * dv1(i, j) + a3 * dv2(i, j)) * dt;
-}
 
-__global__ void compute_boundary(int nx, int ny, double* h, double* u, double* v) {
-    int id = blockIdx.x * 512 + threadIdx.x;
-    int i = id / ny;
-    int j = id % ny;
     if (i < nx && j == ny) {
         v(i, 0) = v(i, ny);
     }
@@ -180,10 +170,7 @@ void step()
     dim3 blockDim(512);
     dim3 gridDim(((nx*ny)+511)/512);
     
-    ghost_setup<<<gridDim, blockDim>>>(nx, ny, h);
-    //cudaDeviceSynchronize();
     calc_derivs<<<gridDim, blockDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
-    //cudaDeviceSynchronize();
     
     double a1, a2, a3;
     if (t == 0)
@@ -205,8 +192,6 @@ void step()
     multistep<<<gridDim, blockDim>>>(
         nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
         dh1, du1, dv1, dh2, du2, dv2, dt);
-    compute_boundary<<<gridDim, blockDim>>>(nx, ny, h, u, v);
-    //cudaDeviceSynchronize();
     swap_buffers();
     t++;
 }
