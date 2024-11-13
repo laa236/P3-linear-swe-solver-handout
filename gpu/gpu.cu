@@ -24,6 +24,7 @@ double H, g, dt, dx, dy;
 int nx, ny;
 int t = 0;
 
+const int BLOCK_SIZE = 512;
 //
 int numblocks_x, numblocks_y;
 
@@ -84,7 +85,7 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
 }
 
 __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
-    int id = blockIdx.x * 512 + threadIdx.x;
+    int id = blockIdx.x * BLOCK_SIZE + threadIdx.x;
     int i = id / ny;
     int j = id % ny;
     //bottom two will only execute on the edges
@@ -110,7 +111,7 @@ __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, 
 __global__ void multistep(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
     double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt)
 {
-    int id = blockIdx.x * 512 + threadIdx.x;
+    int id = blockIdx.x * BLOCK_SIZE + threadIdx.x;
     int i = id / ny;
     int j = id % ny;
     
@@ -167,8 +168,8 @@ void step()
     */
 
     //this block is max threads in a block
-    dim3 blockDim(512);
-    dim3 gridDim(((nx*ny)+511)/512);
+    dim3 blockDim(BLOCK_SIZE);
+    dim3 gridDim(((nx*ny)+BLOCK_SIZE-1)/BLOCK_SIZE);
     
     calc_derivs<<<gridDim, blockDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
     
