@@ -84,7 +84,7 @@ void init(double *h0, double *u0, double *v0, double length_, double width_, int
 
 }
 
-__global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, double* h, double* u, double* v, double H, double g, double dx, double dy) {
+__global__ void ghost(int nx, int ny, double* h) {
     int id = blockIdx.x * BLOCK_SIZE + threadIdx.x;
     int i = id / ny;
     int j = id % ny;
@@ -97,6 +97,13 @@ __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, 
     if (i == nx && j < ny) {
         h(nx, j) = h(0, j);
     }
+}
+
+__global__ void calc_derivs(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
+    double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt, double H, double g, double dx, double dy) {
+    int id = blockIdx.x * BLOCK_SIZE + threadIdx.x;
+    int i = id / ny;
+    int j = id % ny;
 
     if (i >= nx || j >= ny) {
         return;
@@ -105,19 +112,6 @@ __global__ void calc_derivs(int nx, int ny, double* dh, double* du, double* dv, 
     dh(i, j) = -H * (du_dx(i, j) + dv_dy(i, j));
     du(i, j) = -g * dh_dx(i, j);
     dv(i, j) = -g * dh_dy(i, j);
-}
-
-
-__global__ void multistep(int nx, int ny, double a1, double a2, double a3, double* dh, double* du, double* dv, double* h, double* u, double* v,
-    double* dh1, double* du1, double* dv1, double* dh2, double* du2, double* dv2, double dt)
-{
-    int id = blockIdx.x * BLOCK_SIZE + threadIdx.x;
-    int i = id / ny;
-    int j = id % ny;
-    
-    if (i >= nx || j >= ny) {
-        return;
-    }
 
     h(i, j) += (a1 * dh(i, j) + a2 * dh1(i, j) + a3 * dh2(i, j)) * dt;
     u(i + 1, j) += (a1 * du(i, j) + a2 * du1(i, j) + a3 * du2(i, j)) * dt;
@@ -130,6 +124,7 @@ __global__ void multistep(int nx, int ny, double a1, double a2, double a3, doubl
         u(0, j) = u(nx, j);
     }
 }
+
 
 void swap_buffers()
 {
@@ -170,9 +165,8 @@ void step()
     //this block is max threads in a block
     dim3 blockDim(BLOCK_SIZE);
     dim3 gridDim(((nx*ny)+BLOCK_SIZE-1)/BLOCK_SIZE);
-    
-    calc_derivs<<<gridDim, blockDim>>>(nx, ny, dh, du, dv, h, u, v, H, g, dx, dy);
-    
+    ghost<<<gridDim, blockDim>>>(nx, ny, h);
+
     double a1, a2, a3;
     if (t == 0)
     {
@@ -190,9 +184,9 @@ void step()
         a3 = 5.0 / 12.0;
     }
 
-    multistep<<<gridDim, blockDim>>>(
+    calc_derivs<<<gridDim, blockDim>>>(
         nx, ny, a1, a2, a3, dh, du, dv, h, u, v,
-        dh1, du1, dv1, dh2, du2, dv2, dt);
+        dh1, du1, dv1, dh2, du2, dv2, dt, H, g, dx, dy);
     swap_buffers();
     t++;
 }
